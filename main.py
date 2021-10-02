@@ -1,7 +1,7 @@
 from rich.console import Console
 from rich.traceback import install
 from rich.table import Table
-import copy
+#import copy
 import uuid
 
 # This is a sample Python script.
@@ -10,16 +10,20 @@ import uuid
 # Press Double Shift to search everywhere for classes, files, tool windows, actions, and settings.
 
 import sys
+
+
 def printf(format, *args):
     sys.stdout.write(format % args)
 
 
-portx = {"001":{"orderIndex": "001", "sside": "Left", "shape":"roundedRect", "image":"None"}}
+portx = {"001": {"orderIndex": "001", "sside": "Left", "shape": "roundedRect", "image": "None"}}
+standardMap = [("*", "*"), ("001", "001")]
+cable3Pair = {"name": "", "001": "1W", "002": "1B", "003": "1Scn", "004": "2W", "005": "2B", "006": "2Scn", "007": "3W", "008": "3B", "009": "3Scn"}
 
 
 class BaseModel:
-
     pass
+
 
 class BaseObject:
 
@@ -27,14 +31,23 @@ class BaseObject:
         self.objects = {}
 
 
+class BaseEdge:
+
+    def __init__(self, name="default"):
+        self.edges = {}
+
+
 class Model:
 
     def __init__(self, name="default"):
         u = uuid.uuid4()
         self.setRoot(u)
+        print("root uuid = ", u)
         model = BaseModel()
         self.objects = BaseObject().objects
         self.addObject(name="root", locChildOf=u, typeChildOf=u)
+        self.edges = BaseEdge().edges
+        self.instanceEdge(name="root")
 
     def setRoot(self, u):
         self.root = u
@@ -42,23 +55,50 @@ class Model:
     def getRoot(self):
         return self.root
 
+    def instanceEdge(self, name="default", ttype="root", location="root", cores={}, ffrom=uuid.uuid4(), fromPort=portx, to=uuid.uuid4(), toPort=portx):
+        u = uuid.uuid4()
+        attributes = {}
+        groups = {}
+        cores = {}
+        self.edges[u] = {"name": name, "type": ttype, "location": location, "typeChildOf": u, "from": ffrom, "fromPort":fromPort, "to": to, "toPort":toPort,
+                         "attributes": attributes, "groups": groups, "cores": cores}
+        return u
+
+    def connectEdge(self, edge, cores, fro, fp, fm, too, tp, tm):
+        self.edges[edge]['cores']['from'] = fro
+        self.edges[edge]['cores']['fromPort'] = fp
+        self.edges[edge]['cores']['to'] = too
+        self.edges[edge]['cores']['tp'] = tp
+
+        for core,fp,fmm,tp,tmm in cores, fp, fm, tp, tm:
+            self.edges[edge][fro][fp]=[cores][fm]
+
+
+
+        return edge
+
     def addObject(self, name="default", ttype="root", location="root", typeChildOf=uuid.uuid4(), locChildOf=uuid.uuid4()):
         u = uuid.uuid4()
         attributes = {}
         groups = {}
-        ports = {} #self.getPorts(u)
-        self.objects[u] = {"name":name, "type":ttype, "location":location, "typeChildOf":u, "locChildOf":u, "attributes":attributes, "groups":groups, "ports":ports}
+        ports = {}  # self.getPorts(u)
+        self.objects[u] = {"name": name, "type": ttype, "location": location, "typeChildOf": u, "locChildOf": u,
+                           "attributes": attributes, "groups": groups, "ports": ports}
         return u
 
-    def instanceObject(self, name="default", ttype="root", location="root", typeChildOf=uuid.uuid4, locChildOf=uuid.uuid4):
+    def instanceObject(self, name="default", ttype="root", location="root", typeChildOf=uuid.uuid4(),
+                       locChildOf=uuid.uuid4()):
         u = uuid.uuid4()
-        attributes = self.getAttributes(typeChildOf) #join self.getAttributes(locChildOf)
+        attributes = self.getAttributes(typeChildOf)  # join self.getAttributes(locChildOf)
         groups = {}
         ports = self.getPorts(typeChildOf)
-        self.objects[u] = {"name":name, "type":ttype, "location":location, "typeChildOf":typeChildOf, "locChildOf":locChildOf, "attributes":attributes, "groups":groups, "ports":ports}
+        self.objects[u] = {"name": name, "type": ttype, "location": location, "typeChildOf": typeChildOf,
+                           "locChildOf": locChildOf, "attributes": attributes, "groups": groups, "ports": ports}
         return u
 
     def getPorts(self, u):
+        if u == self.getRoot():
+            return[]
         if self.objects[u]['typeChildOf'] == u:
             return self.objects[u]['ports']
         else:
@@ -67,10 +107,10 @@ class Model:
     def addAttribute(self, u, att, value):
         self.objects[u].attributes[att] = value
 
-    def getInheritedAttribute(self,u, att):
+    def getInheritedAttribute(self, u, att):
         if not self.objects[u].attributes(att):
             s = self.getInheritedAttribute(self.objects[self.objects[u].locChildOf], att)
-            #here we use recursion to work up the chain of parent objects until the childof object references itself, ultimately 'root' in the furthest case
+            # here we use recursion to work up the chain of parent objects until the childof object references itself, ultimately 'root' in the furthest case
             while not s == self.objects[self.objects[u].locChhildOf]:
                 pass
             return self.objects[self.objects[u].locChildOf]['attributes'[att]]
@@ -80,7 +120,13 @@ class Model:
         return self.objects[u].attributes(att)
 
     def getAttributes(self, u):
-        return self.objects[u]['attributes']
+        if u not in self.objects.keys():
+            return []
+        if 'attributes' in self.objects[u].keys():
+            return self.objects[u]['attributes']
+        else:
+            return []
+
 
     def listAttributes(self):
         l = []
@@ -100,16 +146,16 @@ class Model:
             l.append(self.objects[k].Groups.keys())
         return l
 
-    def multiPort(self, u, port, num= 1, start= 1,):
+    def multiPort(self, u, port, num=1, start=1, ):
         oi = 1
         for c in range(start, (start + num)):
             p = {}
             cstr = str(c).zfill(3)
             oistr = str(oi).zfill(3)
             p["orderIndex"] = oistr
-            #p['sside'] = port["sside"]
-            #p["shape"] = port["shape"]
-            #p["image"] = port["image"]
+            # p['sside'] = port["sside"]
+            # p["shape"] = port["shape"]
+            # p["image"] = port["image"]
             p["connected"] = 'XYZ'
             self.objects[u]['ports'][cstr] = p
             oi = oi + 1
@@ -121,6 +167,13 @@ class Model:
                 print(a, self.objects[o][a])
             print()
 
+    def listEdges(self):
+        for o in self.edges:
+            for a in self.edges[o]:
+                print(a, self.edges[o][a])
+            print()
+
+
     def getNameFromuuid(self, u):
         return self.objects[u]['name']
 
@@ -129,13 +182,14 @@ class Model:
         key = "name"
         res1 = []
         for s in self.objects:
-            if self.objects[s]['name']==n:
+            if self.objects[s]['name'] == n:
                 res1.append(s)
         return res1
 
-    def getFullPathLoc(self,u):
-        l=[]
+    def getFullPathLoc(self, u):
+        l = []
         l.insert(self.objects[u]['name'])
+
 
 def print_hi(name):
     install()
@@ -149,13 +203,14 @@ def print_hi(name):
 
     i = m.addObject(name="Terminals", ttype="Type", typeChildOf=m.getRoot(), location="branch", locChildOf=m.getRoot())
     i = m.addObject(name="Sac 2.5", ttype="Type", typeChildOf=m.getRoot(), location="branch", locChildOf=m.getRoot())
-    i1 = m.addObject(name="24 Terminals", ttype="Type", typeChildOf=m.getRoot(), location="branch", locChildOf=m.getRoot())
-
+    i1 = m.addObject(name="24 Terminals", ttype="Type", typeChildOf=m.getRoot(), location="branch",
+                     locChildOf=m.getRoot())
 
     port = portx
     m.multiPort(i1, port, 24, 1)
 
-    i = m.addObject(name="Kemerton", ttype="Location", typeChildOf=m.getRoot(), location="branch", locChildOf=m.getRoot())
+    i = m.addObject(name="Kemerton", ttype="Location", typeChildOf=m.getRoot(), location="branch",
+                    locChildOf=m.getRoot())
     i = m.addObject(name="Train 1", ttype="Location", typeChildOf=m.getRoot(), location="branch", locChildOf=i)
     i = m.addObject(name="2121", ttype="Location", typeChildOf=m.getRoot(), location="branch", locChildOf=i)
     i = m.addObject(name="Switchroom", ttype="Location", typeChildOf=m.getRoot(), location="branch", locChildOf=i)
@@ -176,16 +231,27 @@ def print_hi(name):
     u = m.getUUIDFromName("Sac 2.5")[0]
     print(u, m.getNameFromuuid(u))
 
+    c1 = m.instanceEdge(name="2121-BMS001-X04-J01", ttype="Edge", ffrom=m.getRoot(), fromPort=portx, to=m.getRoot(), toPort=portx,
+                          cores=cable3Pair)
+    fr = m.getUUIDFromName("2121-BMS001-X01")[0]
+    fp = m.objects[fr]['ports']
+    fm = standardMap
+    to = m.getUUIDFromName("2121-BMS001-X03")[0]
+    tp = m.objects[to]['ports']
+    tm = standardMap
+    cores = m.edges[c1]['cores']
+    c1 = m.connectEdge(c1,cores,fr,fp,fm,to,tp,tm)
 
-    #termMap = ((("Instrument Cable/2.5sqmm", "24 Terminals"), (1,10), (2,11), (3,12),)
-    #m.objects.addAttribute("term map", termMap)
+    # termMap = ((("Instrument Cable/2.5sqmm", "24 Terminals"), (1,10), (2,11), (3,12),)
+    # m.objects.addAttribute("term map", termMap)
     console.log("[red]info [/]", log_locals=True)
     m.listObjects()
+    m.listEdges()
 
-    #m.objects(i, addTerminals(terms))
+    # m.objects(i, addTerminals(terms))
+
 
 if __name__ == '__main__':
     print_hi('PyCharm')
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
-

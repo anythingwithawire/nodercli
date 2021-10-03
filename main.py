@@ -1,7 +1,7 @@
 from rich.console import Console
 from rich.traceback import install
 from rich.table import Table
-#import copy
+import copy
 import uuid
 
 # This is a sample Python script.
@@ -16,8 +16,8 @@ def printf(format, *args):
     sys.stdout.write(format % args)
 
 
-portx = {"001": {"orderIndex": "001", "sside": "Left", "shape": "roundedRect", "image": "None"}}
-standardMap = [("*", "*"), ("001", "001")]
+portx = {"001": {"orderIndex": "001", "sside": "Left", "shape": "roundedRect", "image": "None", 'connections': []}}
+standardMap = [("*", "*"), ("001", "001"),("002", "002"),("003", "003"),("004", "004"),("005", "005"),("006", "006"),("007", "007"),("008", "008"),("009", "009"),("010", "010"),("011", "011"),("012", "012"),("013", "013"),("014", "014"),("015", "015"),("016", "016"),("017", "017"),("018", "018"),("019", "019"),("020", "020"),("021", "021"),("022", "022"),("023", "023"),("024", "024"),("025", "025"),("026", "026")]
 cable3Pair = {"name": "", "001": "1W", "002": "1B", "003": "1Scn", "004": "2W", "005": "2B", "006": "2Scn", "007": "3W", "008": "3B", "009": "3Scn"}
 
 
@@ -59,23 +59,16 @@ class Model:
         u = uuid.uuid4()
         attributes = {}
         groups = {}
-        cores = {}
         self.edges[u] = {"name": name, "type": ttype, "location": location, "typeChildOf": u, "from": ffrom, "fromPort":fromPort, "to": to, "toPort":toPort,
                          "attributes": attributes, "groups": groups, "cores": cores}
         return u
 
     def connectEdge(self, edge, cores, fro, fp, fm, too, tp, tm):
-        self.edges[edge]['cores']['from'] = fro
-        self.edges[edge]['cores']['fromPort'] = fp
-        self.edges[edge]['cores']['to'] = too
-        self.edges[edge]['cores']['tp'] = tp
-
-        for core,fp,fmm,tp,tmm in cores, fp, fm, tp, tm:
-            self.edges[edge][fro][fp]=[cores][fm]
-
-
-
-        return edge
+        for pt in fp:
+            self.objects[fro]['ports'][pt]['connections'].append(self.edges[edge][cores][fm][pt])
+#        for pt in tp:
+#            self.objects[too]['ports'][pt]['connections'].append(self.edges[edge][cores[tm[pt]]])
+        return
 
     def addObject(self, name="default", ttype="root", location="root", typeChildOf=uuid.uuid4(), locChildOf=uuid.uuid4()):
         u = uuid.uuid4()
@@ -157,6 +150,7 @@ class Model:
             # p["shape"] = port["shape"]
             # p["image"] = port["image"]
             p["connected"] = 'XYZ'
+            p["connections"] = []
             self.objects[u]['ports'][cstr] = p
             oi = oi + 1
         return oi
@@ -231,8 +225,9 @@ def print_hi(name):
     u = m.getUUIDFromName("Sac 2.5")[0]
     print(u, m.getNameFromuuid(u))
 
+    w = cable3Pair.copy()
     c1 = m.instanceEdge(name="2121-BMS001-X04-J01", ttype="Edge", ffrom=m.getRoot(), fromPort=portx, to=m.getRoot(), toPort=portx,
-                          cores=cable3Pair)
+                          cores=(cable3Pair).copy())
     fr = m.getUUIDFromName("2121-BMS001-X01")[0]
     fp = m.objects[fr]['ports']
     fm = standardMap
